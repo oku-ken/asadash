@@ -28,7 +28,7 @@
     html, body {
       min-height: 100%;
       font-family: 'Noto Sans JP', 'DM Sans', sans-serif;
-      background: #0a1628;
+      background: #2d3748;
       color: var(--text-primary);
       overflow-x: hidden;
     }
@@ -49,7 +49,7 @@
     .bg-rain    { background-image: url('https://images.unsplash.com/photo-1519692933481-e162a57d6721?w=800&q=80'); }
     .bg-snow    { background-image: url('https://images.unsplash.com/photo-1516912481808-3406841bd33c?w=800&q=80'); }
     .bg-night   { background-image: url('https://images.unsplash.com/photo-1475274047050-1d0c0975c63e?w=800&q=80'); }
-    .bg-default { background: linear-gradient(135deg, #1a2a4a 0%, #0d1b35 100%); }
+    .bg-default { background: linear-gradient(160deg, #4a5568 0%, #2d3748 50%, #1a202c 100%); }
 
     /* ─── LAYOUT ─── */
     #app {
@@ -1137,19 +1137,18 @@ function updateCountdown() {
   const [dh, dm] = S.departTime.split(':').map(Number);
   const dep = new Date(now); dep.setHours(dh, dm, 0, 0);
   let diff = Math.floor((dep - now) / 1000);
-  labelEl.textContent = `出発 ${S.departTime}`;
-  if (diff < 0) {
-    diff = -diff;
-    const hh = String(Math.floor(diff/3600)).padStart(2,'0');
-    const mm = String(Math.floor((diff%3600)/60)).padStart(2,'0');
-    const ss = String(diff%60).padStart(2,'0');
-    el.innerHTML = `<span id="countdown-overdue">+${hh}:${mm}:${ss}</span>`;
-  } else {
-    const hh = String(Math.floor(diff/3600)).padStart(2,'0');
-    const mm = String(Math.floor((diff%3600)/60)).padStart(2,'0');
-    const ss = String(diff%60).padStart(2,'0');
-    el.textContent = `${hh}:${mm}:${ss}`;
-  }
+  // 超過している場合は翌日の同時刻として計算
+  if (diff < 0) dep.setDate(dep.getDate() + 1), diff = Math.floor((dep - now) / 1000);
+  const hh = String(Math.floor(diff/3600)).padStart(2,'0');
+  const mm = String(Math.floor((diff%3600)/60)).padStart(2,'0');
+  const ss = String(diff%60).padStart(2,'0');
+  el.textContent = `${hh}:${mm}:${ss}`;
+  // 1時間以内なら黄色で強調、30分以内はオレンジ
+  if (diff <= 1800) el.style.color = 'var(--danger)';
+  else if (diff <= 3600) el.style.color = 'var(--accent)';
+  else el.style.color = 'var(--accent)';
+  const tomorrowFlag = dep.getDate() !== now.getDate();
+  labelEl.textContent = tomorrowFlag ? `出発 ${S.departTime}（明日）` : `出発 ${S.departTime}`;
 }
 
 // ═══════════════════════════════════════════════
@@ -1183,19 +1182,28 @@ function clearAllTrains() {
 function renderTrains() {
   const el = document.getElementById('train-list');
   const now = new Date();
-  const nowMin = now.getHours()*60 + now.getMinutes();
+  const nowSec = now.getHours()*3600 + now.getMinutes()*60 + now.getSeconds();
   if (!S.trains.length) { el.innerHTML = '<div class="empty-state">電車が未登録です</div>'; return; }
   el.innerHTML = S.trains.map((t,i) => {
     const [h,m] = t.time.split(':').map(Number);
-    const trainMin = h*60+m;
-    const diff = trainMin - nowMin;
+    let trainSec = h*3600 + m*60;
+    let diffSec = trainSec - nowSec;
+    let isTomorrow = false;
+    // 超過していたら翌日として計算
+    if (diffSec < 0) { diffSec += 86400; isTomorrow = true; }
+    const diffMin = Math.floor(diffSec / 60);
     let cls = '';
     let until = '';
-    if (diff < 0) { cls = 'past'; until = '発車済み'; }
-    else if (diff <= 10) { cls = 'soon'; until = `あと${diff}分`; }
-    else { until = `あと${diff}分`; }
+    if (!isTomorrow && diffMin <= 10) { cls = 'soon'; until = `あと${diffMin}分`; }
+    else if (isTomorrow) {
+      const hh = String(Math.floor(diffSec/3600)).padStart(2,'0');
+      const mm = String(Math.floor((diffSec%3600)/60)).padStart(2,'0');
+      until = `明日 あと${hh}:${mm}`;
+    }
+    else { until = `あと${diffMin}分`; }
+    const label = isTomorrow ? `<span style="font-size:10px;color:var(--text-muted);margin-left:4px;">明日</span>` : '';
     return `<div class="train-item">
-      <div class="train-time ${cls}">${t.time}</div>
+      <div class="train-time ${cls}">${t.time}${label}</div>
       <div class="train-info">
         <div class="train-route">${t.from} → ${t.to}</div>
         <div class="train-until">${until}</div>
