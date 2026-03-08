@@ -1,0 +1,1123 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Morning Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --glass-bg: rgba(255, 255, 255, 0.13);
+      --glass-border: rgba(255, 255, 255, 0.25);
+      --glass-shadow: 0 8px 32px rgba(0,0,0,0.18);
+      --text-primary: rgba(255,255,255,0.97);
+      --text-secondary: rgba(255,255,255,0.72);
+      --text-muted: rgba(255,255,255,0.5);
+      --accent: #FFD580;
+      --accent2: #7ECFFF;
+      --danger: #FF7E7E;
+      --success: #7EFFB2;
+      --radius: 20px;
+      --radius-sm: 12px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    html, body {
+      min-height: 100%;
+      font-family: 'Noto Sans JP', 'DM Sans', sans-serif;
+      background: #0a1628;
+      color: var(--text-primary);
+      overflow-x: hidden;
+    }
+
+    /* ─── BACKGROUND ─── */
+    #bg {
+      position: fixed; inset: 0; z-index: 0;
+      background-size: cover; background-position: center;
+      transition: opacity 1.2s ease;
+    }
+    #bg::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(180deg, rgba(0,0,0,0.28) 0%, rgba(0,0,0,0.45) 100%);
+    }
+    .bg-sunny   { background-image: url('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&q=80'); }
+    .bg-cloudy  { background-image: url('https://images.unsplash.com/photo-1534088568595-a066f410bcda?w=800&q=80'); }
+    .bg-rain    { background-image: url('https://images.unsplash.com/photo-1519692933481-e162a57d6721?w=800&q=80'); }
+    .bg-snow    { background-image: url('https://images.unsplash.com/photo-1516912481808-3406841bd33c?w=800&q=80'); }
+    .bg-night   { background-image: url('https://images.unsplash.com/photo-1475274047050-1d0c0975c63e?w=800&q=80'); }
+    .bg-default { background: linear-gradient(135deg, #1a2a4a 0%, #0d1b35 100%); }
+
+    /* ─── LAYOUT ─── */
+    #app {
+      position: relative; z-index: 1;
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 16px 14px 100px;
+      min-height: 100vh;
+    }
+
+    /* ─── GLASS CARD ─── */
+    .card {
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      box-shadow: var(--glass-shadow);
+      padding: 18px 20px;
+      margin-bottom: 12px;
+      animation: fadeUp 0.5s ease both;
+    }
+    .card-label {
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      font-family: 'DM Mono', monospace;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(18px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .card:nth-child(1) { animation-delay: 0.05s; }
+    .card:nth-child(2) { animation-delay: 0.10s; }
+    .card:nth-child(3) { animation-delay: 0.15s; }
+    .card:nth-child(4) { animation-delay: 0.20s; }
+    .card:nth-child(5) { animation-delay: 0.25s; }
+    .card:nth-child(6) { animation-delay: 0.30s; }
+
+    /* ─── 1. TIME ─── */
+    #time-card {
+      text-align: center;
+      padding: 22px 20px 16px;
+      background: rgba(255,255,255,0.10);
+    }
+    #clock {
+      font-family: 'DM Mono', monospace;
+      font-size: 68px;
+      font-weight: 500;
+      letter-spacing: -2px;
+      line-height: 1;
+      color: #fff;
+      text-shadow: 0 2px 24px rgba(0,0,0,0.3);
+    }
+    #date-str {
+      font-size: 15px;
+      color: var(--text-secondary);
+      margin-top: 6px;
+      letter-spacing: 0.04em;
+    }
+
+    /* ─── 2. WEATHER ─── */
+    #weather-card { padding: 16px 16px; }
+    .weather-row {
+      display: flex;
+      align-items: stretch;
+      gap: 10px;
+    }
+    .weather-panel {
+      flex: 1;
+      background: rgba(255,255,255,0.10);
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 14px;
+      padding: 14px 12px;
+      position: relative;
+      min-width: 0;
+    }
+    .weather-panel.dest { cursor: pointer; }
+    .weather-panel.dest:active { background: rgba(255,255,255,0.18); }
+    .wp-title {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .wp-city {
+      font-size: 13px;
+      font-weight: 500;
+      margin-bottom: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .wp-time { font-size: 10px; color: var(--text-muted); margin-bottom: 8px; }
+    .wp-icon { font-size: 36px; line-height: 1; margin-bottom: 4px; }
+    .wp-temp { font-size: 26px; font-weight: 600; font-family: 'DM Mono', monospace; }
+    .wp-rain { font-size: 11px; color: var(--accent2); margin-top: 2px; }
+    .wp-desc { font-size: 10px; color: var(--text-secondary); margin-top: 2px; }
+    .weather-arrow {
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-muted); font-size: 20px; flex-shrink: 0;
+      align-self: center;
+    }
+    .dest-hint {
+      position: absolute; top: 8px; right: 8px;
+      font-size: 10px; color: var(--accent); opacity: 0.8;
+    }
+    .api-key-notice {
+      margin-top: 10px;
+      background: rgba(255,200,80,0.12);
+      border: 1px solid rgba(255,200,80,0.3);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 12px;
+      color: var(--accent);
+    }
+    .api-key-notice input {
+      width: 100%; margin-top: 6px;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,200,80,0.4);
+      border-radius: 8px;
+      padding: 8px 10px;
+      color: #fff;
+      font-size: 13px;
+      font-family: 'DM Mono', monospace;
+    }
+    .api-key-notice button {
+      margin-top: 6px; width: 100%;
+      background: rgba(255,200,80,0.25);
+      border: 1px solid rgba(255,200,80,0.5);
+      border-radius: 8px;
+      padding: 8px;
+      color: var(--accent);
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    /* ─── 3. COUNTDOWN ─── */
+    #countdown-card { text-align: center; }
+    #countdown-display {
+      font-family: 'DM Mono', monospace;
+      font-size: 46px;
+      font-weight: 500;
+      letter-spacing: 2px;
+      color: var(--accent);
+      text-shadow: 0 0 30px rgba(255,213,128,0.4);
+    }
+    #countdown-label { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+    #depart-time-str  { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+    .set-btn {
+      margin-top: 10px;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.22);
+      border-radius: 10px;
+      padding: 8px 18px;
+      color: var(--text-secondary);
+      font-size: 13px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .set-btn:active { background: rgba(255,255,255,0.2); }
+    #countdown-overdue { color: var(--danger); }
+
+    /* ─── 4. TRAIN ─── */
+    #train-card {}
+    .train-list { display: flex; flex-direction: column; gap: 8px; }
+    .train-item {
+      display: flex; align-items: center;
+      background: rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 12px 14px;
+      gap: 12px;
+    }
+    .train-time {
+      font-family: 'DM Mono', monospace;
+      font-size: 22px; font-weight: 500;
+      color: #fff; min-width: 54px;
+    }
+    .train-time.soon { color: var(--accent); }
+    .train-time.past { color: var(--text-muted); text-decoration: line-through; }
+    .train-info { flex: 1; }
+    .train-route { font-size: 13px; color: var(--text-secondary); }
+    .train-until { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .train-add-btn {
+      width: 100%;
+      margin-top: 10px;
+      background: rgba(255,255,255,0.08);
+      border: 1px dashed rgba(255,255,255,0.25);
+      border-radius: 12px;
+      padding: 10px;
+      color: var(--text-muted);
+      font-size: 13px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    /* ─── 5. SCHEDULE ─── */
+    #schedule-card {}
+    .schedule-list { display: flex; flex-direction: column; gap: 8px; }
+    .schedule-item {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 10px 12px;
+      background: rgba(255,255,255,0.07);
+      border-radius: 12px;
+      position: relative;
+    }
+    .schedule-item.current {
+      background: rgba(126,207,255,0.15);
+      border: 1px solid rgba(126,207,255,0.3);
+    }
+    .schedule-time {
+      font-family: 'DM Mono', monospace;
+      font-size: 14px; font-weight: 500;
+      color: var(--accent2);
+      min-width: 48px; flex-shrink: 0;
+    }
+    .schedule-title { font-size: 14px; }
+    .schedule-del {
+      margin-left: auto; background: none; border: none;
+      color: var(--text-muted); font-size: 16px;
+      cursor: pointer; padding: 0 4px;
+      line-height: 1; flex-shrink: 0;
+    }
+    .schedule-add-row {
+      display: flex; gap: 6px; margin-top: 10px;
+    }
+    .schedule-add-row input {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 10px;
+      padding: 10px 12px;
+      color: #fff;
+      font-size: 14px;
+      font-family: inherit;
+    }
+    .schedule-add-row input::placeholder { color: var(--text-muted); }
+    .schedule-add-row input[type=time] { width: 108px; flex-shrink: 0; }
+    .schedule-add-row input[type=text]  { flex: 1; }
+    .schedule-add-row button {
+      background: rgba(126,207,255,0.2);
+      border: 1px solid rgba(126,207,255,0.4);
+      border-radius: 10px;
+      color: var(--accent2);
+      padding: 10px 14px;
+      font-size: 14px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    /* ─── 6. TODO ─── */
+    #todo-card {}
+    .todo-list { display: flex; flex-direction: column; gap: 7px; }
+    .todo-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 12px;
+      background: rgba(255,255,255,0.07);
+      border-radius: 12px;
+      transition: opacity 0.3s;
+    }
+    .todo-item.done { opacity: 0.45; }
+    .todo-check {
+      width: 22px; height: 22px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-radius: 6px;
+      background: none;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; font-size: 14px;
+      transition: all 0.2s;
+    }
+    .todo-check.checked {
+      background: rgba(126,255,178,0.25);
+      border-color: var(--success);
+      color: var(--success);
+    }
+    .todo-text { flex: 1; font-size: 14px; }
+    .todo-item.done .todo-text { text-decoration: line-through; color: var(--text-muted); }
+    .todo-deadline {
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: 20px;
+      background: rgba(255,213,128,0.15);
+      color: var(--accent);
+      border: 1px solid rgba(255,213,128,0.3);
+      flex-shrink: 0;
+    }
+    .todo-deadline.overdue {
+      background: rgba(255,126,126,0.15);
+      color: var(--danger);
+      border-color: rgba(255,126,126,0.3);
+    }
+    .todo-del {
+      background: none; border: none;
+      color: var(--text-muted); font-size: 16px;
+      cursor: pointer; padding: 0 2px;
+    }
+    .todo-add-area { margin-top: 12px; }
+    .todo-input-row {
+      display: flex; gap: 6px; margin-bottom: 6px;
+    }
+    .todo-input-row input[type=text] {
+      flex: 1;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 10px;
+      padding: 10px 12px;
+      color: #fff;
+      font-size: 14px;
+      font-family: inherit;
+    }
+    .todo-input-row input::placeholder { color: var(--text-muted); }
+    .todo-deadline-row {
+      display: flex; gap: 6px; flex-wrap: wrap;
+    }
+    .dl-btn {
+      padding: 7px 14px;
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.08);
+      color: var(--text-secondary);
+      font-size: 12px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s;
+    }
+    .dl-btn.selected, .dl-btn:active {
+      background: rgba(255,213,128,0.2);
+      border-color: rgba(255,213,128,0.5);
+      color: var(--accent);
+    }
+    .dl-date-input {
+      padding: 7px 12px;
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.08);
+      color: #fff;
+      font-size: 12px;
+      font-family: 'DM Mono', monospace;
+      cursor: pointer;
+    }
+    .todo-add-btn {
+      width: 100%; margin-top: 8px;
+      background: rgba(126,255,178,0.15);
+      border: 1px solid rgba(126,255,178,0.3);
+      border-radius: 12px;
+      color: var(--success);
+      padding: 11px;
+      font-size: 14px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    /* ─── MODALS ─── */
+    .modal-overlay {
+      position: fixed; inset: 0; z-index: 100;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(6px);
+      display: flex; align-items: flex-end; justify-content: center;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.25s;
+    }
+    .modal-overlay.open { opacity: 1; pointer-events: all; }
+    .modal-sheet {
+      width: 100%; max-width: 480px;
+      background: rgba(20,35,60,0.95);
+      border-top: 1px solid rgba(255,255,255,0.15);
+      border-radius: 24px 24px 0 0;
+      padding: 20px 20px 40px;
+      transform: translateY(100%);
+      transition: transform 0.3s cubic-bezier(.34,1.56,.64,1);
+    }
+    .modal-overlay.open .modal-sheet { transform: translateY(0); }
+    .modal-handle {
+      width: 40px; height: 4px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 2px;
+      margin: 0 auto 16px;
+    }
+    .modal-title {
+      font-size: 17px; font-weight: 600;
+      margin-bottom: 16px;
+    }
+    .modal-input {
+      width: 100%;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 12px;
+      padding: 12px 14px;
+      color: #fff;
+      font-size: 16px;
+      font-family: inherit;
+      margin-bottom: 10px;
+    }
+    .modal-input::placeholder { color: var(--text-muted); }
+    .modal-btn-primary {
+      width: 100%;
+      background: rgba(126,207,255,0.25);
+      border: 1px solid rgba(126,207,255,0.4);
+      border-radius: 14px;
+      color: #fff;
+      padding: 14px;
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      font-family: inherit;
+      margin-top: 4px;
+    }
+    .search-results {
+      max-height: 220px; overflow-y: auto;
+      margin-top: 4px;
+    }
+    .search-result-item {
+      padding: 12px 14px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-size: 14px;
+      color: var(--text-secondary);
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .search-result-item:active { background: rgba(255,255,255,0.1); }
+
+    /* ─── TRAIN MODAL ─── */
+    .train-form { display: flex; flex-direction: column; gap: 8px; }
+    .train-form input, .train-form select {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 12px;
+      padding: 12px 14px;
+      color: #fff;
+      font-size: 15px;
+      font-family: inherit;
+      width: 100%;
+    }
+    .train-form select option { background: #1a2a4a; color: #fff; }
+    .train-form-row { display: flex; gap: 8px; }
+    .train-form-row input { flex: 1; }
+
+    /* ─── SETTINGS ─── */
+    #settings-btn {
+      position: fixed; top: 16px; right: 18px; z-index: 50;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 50%;
+      width: 40px; height: 40px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 18px;
+      backdrop-filter: blur(10px);
+    }
+
+    /* ─── MISC ─── */
+    .section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      color: var(--text-secondary);
+      display: flex; align-items: center; gap: 6px;
+    }
+    .section-icon { font-size: 16px; }
+    .empty-state {
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13px;
+      padding: 14px 0;
+    }
+
+    input:focus, button:focus { outline: none; }
+    input[type=time]::-webkit-calendar-picker-indicator { filter: invert(1); opacity: 0.5; }
+    input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1); opacity: 0.5; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 2px; }
+  </style>
+</head>
+<body>
+
+<div id="bg" class="bg-default"></div>
+
+<div id="app">
+
+  <!-- 1. TIME -->
+  <div class="card" id="time-card">
+    <div id="clock">7:00</div>
+    <div id="date-str">2026 / 1 / 1（木）</div>
+  </div>
+
+  <!-- 2. WEATHER -->
+  <div class="card" id="weather-card">
+    <div class="section-header">
+      <div class="section-title"><span class="section-icon">🌤</span>天気</div>
+    </div>
+    <div class="weather-row">
+      <div class="weather-panel" id="cur-weather">
+        <div class="wp-title">現在地</div>
+        <div class="wp-city" id="cur-city">取得中...</div>
+        <div class="wp-time" id="cur-wtime">──</div>
+        <div class="wp-icon" id="cur-icon">⏳</div>
+        <div class="wp-temp" id="cur-temp">──℃</div>
+        <div class="wp-rain" id="cur-rain">降水 ─%</div>
+        <div class="wp-desc" id="cur-desc"></div>
+      </div>
+      <div class="weather-arrow">›</div>
+      <div class="weather-panel dest" id="dest-weather" onclick="openDestModal()">
+        <div class="dest-hint" title="タップで変更">✎</div>
+        <div class="wp-title">目的地</div>
+        <div class="wp-city" id="dest-city">タップして設定</div>
+        <div class="wp-time" id="dest-wtime">──</div>
+        <div class="wp-icon" id="dest-icon">📍</div>
+        <div class="wp-temp" id="dest-temp">──℃</div>
+        <div class="wp-rain" id="dest-rain">降水 ─%</div>
+        <div class="wp-desc" id="dest-desc"></div>
+      </div>
+    </div>
+    <div id="api-key-area" class="api-key-notice" style="display:none;">
+      ⚠️ OpenWeatherMap APIキーを入力してください（無料登録で取得可）
+      <input type="text" id="api-key-input" placeholder="例: a1b2c3d4e5f6..." maxlength="64">
+      <button onclick="saveApiKey()">APIキーを保存して天気を取得</button>
+    </div>
+  </div>
+
+  <!-- 3. COUNTDOWN -->
+  <div class="card" id="countdown-card">
+    <div class="section-title" style="margin-bottom:8px;">
+      <span class="section-icon">⏱</span>出発まで
+    </div>
+    <div id="countdown-display">──:──:──</div>
+    <div id="depart-time-str">出発時間未設定</div>
+    <button class="set-btn" onclick="openDepartModal()">出発時間を設定</button>
+  </div>
+
+  <!-- 4. TRAIN -->
+  <div class="card" id="train-card">
+    <div class="section-header">
+      <div class="section-title"><span class="section-icon">🚃</span>電車</div>
+    </div>
+    <div class="train-list" id="train-list"></div>
+    <button class="train-add-btn" onclick="openTrainModal()">＋ 電車を追加</button>
+  </div>
+
+  <!-- 5. SCHEDULE -->
+  <div class="card" id="schedule-card">
+    <div class="section-header">
+      <div class="section-title"><span class="section-icon">📅</span>今日の予定</div>
+    </div>
+    <div class="schedule-list" id="schedule-list"></div>
+    <div class="schedule-add-row">
+      <input type="time" id="sch-time">
+      <input type="text" id="sch-title" placeholder="予定を追加...">
+      <button onclick="addSchedule()">＋</button>
+    </div>
+  </div>
+
+  <!-- 6. TODO -->
+  <div class="card" id="todo-card">
+    <div class="section-header">
+      <div class="section-title"><span class="section-icon">☑️</span>持ち物・TODO</div>
+    </div>
+    <div class="todo-list" id="todo-list"></div>
+    <div class="todo-add-area">
+      <div class="todo-input-row">
+        <input type="text" id="todo-input" placeholder="追加する項目...">
+      </div>
+      <div class="todo-deadline-row" id="dl-row">
+        <button class="dl-btn selected" data-dl="today" onclick="selectDeadline(this)">今日</button>
+        <button class="dl-btn" data-dl="tomorrow" onclick="selectDeadline(this)">明日</button>
+        <button class="dl-btn" data-dl="none" onclick="selectDeadline(this)">期限なし</button>
+        <input type="date" id="todo-date-input" class="dl-date-input" onchange="selectDateDL(this)">
+      </div>
+      <button class="todo-add-btn" onclick="addTodo()">＋ 追加</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- SETTINGS BTN -->
+<div id="settings-btn" onclick="openSettingsModal()">⚙️</div>
+
+<!-- MODAL: 目的地設定 -->
+<div class="modal-overlay" id="dest-modal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">目的地を設定</div>
+    <input class="modal-input" type="text" id="dest-search-input" placeholder="都市名を入力（例：大阪、Osaka）" oninput="searchCity(this.value)">
+    <div class="search-results" id="search-results"></div>
+    <button class="modal-btn-primary" onclick="closeDestModal()">キャンセル</button>
+  </div>
+</div>
+
+<!-- MODAL: 出発時間 -->
+<div class="modal-overlay" id="depart-modal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">出発時間を設定</div>
+    <input class="modal-input" type="time" id="depart-time-input">
+    <button class="modal-btn-primary" onclick="saveDepartTime()">保存</button>
+  </div>
+</div>
+
+<!-- MODAL: 電車追加 -->
+<div class="modal-overlay" id="train-modal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">電車を追加</div>
+    <div class="train-form">
+      <div class="train-form-row">
+        <input type="text" id="train-from" placeholder="出発駅">
+        <input type="text" id="train-to" placeholder="到着駅">
+      </div>
+      <input type="time" id="train-time">
+      <button class="modal-btn-primary" onclick="saveTrainEntry()">追加</button>
+      <button class="modal-btn-primary" style="background:rgba(255,100,100,0.15);border-color:rgba(255,100,100,0.3);color:var(--danger)" onclick="clearAllTrains()">全削除</button>
+      <button class="modal-btn-primary" style="background:transparent;margin-top:4px;" onclick="closeTrainModal()">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: 設定 -->
+<div class="modal-overlay" id="settings-modal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">⚙️ 設定</div>
+    <div style="color:var(--text-secondary);font-size:14px;margin-bottom:10px;">OpenWeatherMap APIキー</div>
+    <input class="modal-input" type="text" id="settings-api-key" placeholder="APIキーを入力">
+    <button class="modal-btn-primary" onclick="saveSettingsApiKey()">APIキーを保存</button>
+    <div style="margin-top:16px;color:var(--text-secondary);font-size:14px;margin-bottom:10px;">今日の予定・Todoをリセット</div>
+    <button class="modal-btn-primary" style="background:rgba(255,100,100,0.15);border-color:rgba(255,100,100,0.3);color:var(--danger)" onclick="resetDay()">今日分をリセット</button>
+    <button class="modal-btn-primary" style="background:transparent;margin-top:8px;" onclick="closeSettingsModal()">閉じる</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  STATE & STORAGE
+// ═══════════════════════════════════════════════
+const S = {
+  apiKey: localStorage.getItem('owm_api_key') || '',
+  destCity: JSON.parse(localStorage.getItem('dest_city') || 'null'),
+  departTime: localStorage.getItem('depart_time') || '',
+  trains: JSON.parse(localStorage.getItem('trains') || '[]'),
+  todos: JSON.parse(localStorage.getItem('todos') || '[]'),
+  schedules: JSON.parse(localStorage.getItem('schedules') || '[]'),
+};
+
+function save(key, val) {
+  if (key === 'apiKey') { S.apiKey = val; localStorage.setItem('owm_api_key', val); }
+  else if (key === 'destCity') { S.destCity = val; localStorage.setItem('dest_city', JSON.stringify(val)); }
+  else if (key === 'departTime') { S.departTime = val; localStorage.setItem('depart_time', val); }
+  else if (key === 'trains') { S.trains = val; localStorage.setItem('trains', JSON.stringify(val)); }
+  else if (key === 'todos') { S.todos = val; localStorage.setItem('todos', JSON.stringify(val)); }
+  else if (key === 'schedules') { S.schedules = val; localStorage.setItem('schedules', JSON.stringify(val)); }
+}
+
+// ═══════════════════════════════════════════════
+//  CLOCK
+// ═══════════════════════════════════════════════
+const DAY_JA = ['日','月','火','水','木','金','土'];
+function updateClock() {
+  const now = new Date();
+  const h = String(now.getHours()).padStart(2,'0');
+  const m = String(now.getMinutes()).padStart(2,'0');
+  document.getElementById('clock').textContent = `${h}:${m}`;
+  const y = now.getFullYear(), mo = now.getMonth()+1, d = now.getDate();
+  document.getElementById('date-str').textContent =
+    `${y} / ${mo} / ${d}（${DAY_JA[now.getDay()]}）`;
+  updateCountdown();
+  renderTrains();
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ═══════════════════════════════════════════════
+//  BACKGROUND / WEATHER CODE → BG
+// ═══════════════════════════════════════════════
+function setBackground(code) {
+  const bg = document.getElementById('bg');
+  bg.className = '';
+  const h = new Date().getHours();
+  if (h < 6 || h >= 20) { bg.classList.add('bg-night'); return; }
+  if (!code) { bg.classList.add('bg-default'); return; }
+  if (code >= 200 && code < 600) bg.classList.add('bg-rain');
+  else if (code >= 600 && code < 700) bg.classList.add('bg-snow');
+  else if (code >= 700 && code < 800) bg.classList.add('bg-cloudy');
+  else if (code === 800) bg.classList.add('bg-sunny');
+  else if (code > 800) bg.classList.add('bg-cloudy');
+  else bg.classList.add('bg-default');
+}
+
+// ═══════════════════════════════════════════════
+//  WEATHER API
+// ═══════════════════════════════════════════════
+function weatherIcon(code) {
+  if (!code) return '🌡';
+  if (code >= 200 && code < 300) return '⛈';
+  if (code >= 300 && code < 400) return '🌦';
+  if (code >= 500 && code < 600) return '🌧';
+  if (code >= 600 && code < 700) return '❄️';
+  if (code >= 700 && code < 800) return '🌫';
+  if (code === 800) return '☀️';
+  if (code === 801) return '🌤';
+  if (code === 802) return '⛅️';
+  if (code > 802) return '☁️';
+  return '🌡';
+}
+
+async function fetchWeatherByCoords(lat, lon) {
+  if (!S.apiKey) return null;
+  try {
+    const [cur, fore] = await Promise.all([
+      fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${S.apiKey}&units=metric&lang=ja`).then(r=>r.json()),
+      fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${S.apiKey}&units=metric&cnt=3`).then(r=>r.json())
+    ]);
+    if (cur.cod !== 200) return null;
+    const pop = fore?.list?.[0]?.pop ?? 0;
+    return {
+      city: cur.name,
+      temp: Math.round(cur.main.temp),
+      code: cur.weather[0].id,
+      desc: cur.weather[0].description,
+      rain: Math.round(pop * 100),
+    };
+  } catch { return null; }
+}
+
+async function fetchWeatherByCity(cityName) {
+  if (!S.apiKey) return null;
+  try {
+    const geo = await fetch(`https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(cityName)}&limit=1&appid=${S.apiKey}`).then(r=>r.json());
+    if (!geo || !geo[0]) return null;
+    return fetchWeatherByCoords(geo[0].lat, geo[0].lon);
+  } catch { return null; }
+}
+
+function renderWeatherPanel(prefix, data, timeLabel) {
+  if (!data) return;
+  document.getElementById(`${prefix}-city`).textContent = data.city;
+  document.getElementById(`${prefix}-wtime`).textContent = timeLabel;
+  document.getElementById(`${prefix}-icon`).textContent = weatherIcon(data.code);
+  document.getElementById(`${prefix}-temp`).textContent = `${data.temp}℃`;
+  document.getElementById(`${prefix}-rain`).textContent = `降水 ${data.rain}%`;
+  document.getElementById(`${prefix}-desc`).textContent = data.desc;
+  if (prefix === 'cur') setBackground(data.code);
+}
+
+async function loadWeather() {
+  if (!S.apiKey) {
+    document.getElementById('api-key-area').style.display = 'block';
+    return;
+  }
+  document.getElementById('api-key-area').style.display = 'none';
+
+  const now = new Date();
+  const timeStr = `${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}現在`;
+
+  // current location
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(async pos => {
+      const d = await fetchWeatherByCoords(pos.coords.latitude, pos.coords.longitude);
+      renderWeatherPanel('cur', d, timeStr);
+    }, () => {
+      document.getElementById('cur-city').textContent = '位置情報なし';
+    });
+  } else {
+    document.getElementById('cur-city').textContent = '非対応';
+  }
+
+  // destination
+  if (S.destCity) {
+    const depH = S.departTime ? S.departTime.split(':')[0] : now.getHours();
+    const d = await fetchWeatherByCoords(S.destCity.lat, S.destCity.lon);
+    renderWeatherPanel('dest', d, `${depH}:00予報`);
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  DESTINATION MODAL
+// ═══════════════════════════════════════════════
+function openDestModal() {
+  document.getElementById('dest-modal').classList.add('open');
+  document.getElementById('dest-search-input').value = '';
+  document.getElementById('search-results').innerHTML = '';
+  setTimeout(() => document.getElementById('dest-search-input').focus(), 300);
+}
+function closeDestModal() { document.getElementById('dest-modal').classList.remove('open'); }
+
+let searchTimer;
+async function searchCity(q) {
+  clearTimeout(searchTimer);
+  if (!q || q.length < 2) { document.getElementById('search-results').innerHTML = ''; return; }
+  if (!S.apiKey) {
+    document.getElementById('search-results').innerHTML = '<div class="search-result-item" style="color:var(--accent)">APIキーを設定してください</div>';
+    return;
+  }
+  searchTimer = setTimeout(async () => {
+    try {
+      const res = await fetch(`https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(q)}&limit=6&appid=${S.apiKey}`).then(r=>r.json());
+      const el = document.getElementById('search-results');
+      if (!res || !res.length) { el.innerHTML = '<div class="search-result-item" style="color:var(--text-muted)">候補なし</div>'; return; }
+      el.innerHTML = res.map(c =>
+        `<div class="search-result-item" onclick='selectDestCity(${JSON.stringify({name:c.local_names?.ja||c.name, lat:c.lat, lon:c.lon})})'>${c.local_names?.ja||c.name}（${c.country}）</div>`
+      ).join('');
+    } catch { }
+  }, 400);
+}
+
+async function selectDestCity(city) {
+  save('destCity', city);
+  document.getElementById('dest-city').textContent = city.name;
+  closeDestModal();
+  const depH = S.departTime ? S.departTime.split(':')[0] : new Date().getHours();
+  const d = await fetchWeatherByCoords(city.lat, city.lon);
+  renderWeatherPanel('dest', d, `${depH}:00予報`);
+}
+
+// ═══════════════════════════════════════════════
+//  DEPART COUNTDOWN
+// ═══════════════════════════════════════════════
+function openDepartModal() {
+  document.getElementById('depart-modal').classList.add('open');
+  if (S.departTime) document.getElementById('depart-time-input').value = S.departTime;
+}
+function closeDepartModal() { document.getElementById('depart-modal').classList.remove('open'); }
+function saveDepartTime() {
+  const v = document.getElementById('depart-time-input').value;
+  if (!v) return;
+  save('departTime', v);
+  closeDepartModal();
+  updateCountdown();
+}
+
+function updateCountdown() {
+  const el = document.getElementById('countdown-display');
+  const labelEl = document.getElementById('depart-time-str');
+  if (!S.departTime) { el.textContent = '──:──:──'; labelEl.textContent = '出発時間未設定'; return; }
+  const now = new Date();
+  const [dh, dm] = S.departTime.split(':').map(Number);
+  const dep = new Date(now); dep.setHours(dh, dm, 0, 0);
+  let diff = Math.floor((dep - now) / 1000);
+  labelEl.textContent = `出発 ${S.departTime}`;
+  if (diff < 0) {
+    diff = -diff;
+    const hh = String(Math.floor(diff/3600)).padStart(2,'0');
+    const mm = String(Math.floor((diff%3600)/60)).padStart(2,'0');
+    const ss = String(diff%60).padStart(2,'0');
+    el.innerHTML = `<span id="countdown-overdue">+${hh}:${mm}:${ss}</span>`;
+  } else {
+    const hh = String(Math.floor(diff/3600)).padStart(2,'0');
+    const mm = String(Math.floor((diff%3600)/60)).padStart(2,'0');
+    const ss = String(diff%60).padStart(2,'0');
+    el.textContent = `${hh}:${mm}:${ss}`;
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  TRAINS
+// ═══════════════════════════════════════════════
+function openTrainModal() { document.getElementById('train-modal').classList.add('open'); }
+function closeTrainModal() { document.getElementById('train-modal').classList.remove('open'); }
+
+function saveTrainEntry() {
+  const from = document.getElementById('train-from').value.trim();
+  const to   = document.getElementById('train-to').value.trim();
+  const time = document.getElementById('train-time').value;
+  if (!time) return;
+  const list = [...S.trains, { from: from||'出発', to: to||'到着', time }];
+  list.sort((a,b) => a.time.localeCompare(b.time));
+  save('trains', list);
+  closeTrainModal();
+  renderTrains();
+  document.getElementById('train-from').value = '';
+  document.getElementById('train-to').value = '';
+  document.getElementById('train-time').value = '';
+}
+
+function clearAllTrains() {
+  if (!confirm('全削除しますか？')) return;
+  save('trains', []);
+  closeTrainModal();
+  renderTrains();
+}
+
+function renderTrains() {
+  const el = document.getElementById('train-list');
+  const now = new Date();
+  const nowMin = now.getHours()*60 + now.getMinutes();
+  if (!S.trains.length) { el.innerHTML = '<div class="empty-state">電車が未登録です</div>'; return; }
+  el.innerHTML = S.trains.map((t,i) => {
+    const [h,m] = t.time.split(':').map(Number);
+    const trainMin = h*60+m;
+    const diff = trainMin - nowMin;
+    let cls = '';
+    let until = '';
+    if (diff < 0) { cls = 'past'; until = '発車済み'; }
+    else if (diff <= 10) { cls = 'soon'; until = `あと${diff}分`; }
+    else { until = `あと${diff}分`; }
+    return `<div class="train-item">
+      <div class="train-time ${cls}">${t.time}</div>
+      <div class="train-info">
+        <div class="train-route">${t.from} → ${t.to}</div>
+        <div class="train-until">${until}</div>
+      </div>
+      <button onclick="deleteTrain(${i})" style="background:none;border:none;color:var(--text-muted);font-size:16px;cursor:pointer;">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function deleteTrain(i) {
+  const list = [...S.trains]; list.splice(i,1);
+  save('trains', list); renderTrains();
+}
+
+// ═══════════════════════════════════════════════
+//  SCHEDULE
+// ═══════════════════════════════════════════════
+function renderSchedules() {
+  const el = document.getElementById('schedule-list');
+  const now = new Date();
+  const nowMin = now.getHours()*60+now.getMinutes();
+  if (!S.schedules.length) { el.innerHTML = '<div class="empty-state">予定なし</div>'; return; }
+  el.innerHTML = [...S.schedules].sort((a,b)=>a.time.localeCompare(b.time)).map((s,i)=>{
+    const [h,m] = s.time.split(':').map(Number);
+    const sMin = h*60+m;
+    const cur = Math.abs(sMin - nowMin) < 30;
+    return `<div class="schedule-item ${cur?'current':''}">
+      <div class="schedule-time">${s.time}</div>
+      <div class="schedule-title">${s.title}</div>
+      <button class="schedule-del" onclick="deleteSchedule(${i})">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function addSchedule() {
+  const time = document.getElementById('sch-time').value;
+  const title = document.getElementById('sch-title').value.trim();
+  if (!time || !title) return;
+  save('schedules', [...S.schedules, {time, title}]);
+  document.getElementById('sch-time').value = '';
+  document.getElementById('sch-title').value = '';
+  renderSchedules();
+}
+
+function deleteSchedule(i) {
+  const list = [...S.schedules]; list.splice(i,1);
+  save('schedules', list); renderSchedules();
+}
+
+// ═══════════════════════════════════════════════
+//  TODO
+// ═══════════════════════════════════════════════
+let selectedDL = 'today';
+function selectDeadline(btn) {
+  selectedDL = btn.dataset.dl;
+  document.querySelectorAll('.dl-btn').forEach(b=>b.classList.remove('selected'));
+  btn.classList.add('selected');
+}
+function selectDateDL(inp) {
+  if (!inp.value) return;
+  selectedDL = inp.value;
+  document.querySelectorAll('.dl-btn').forEach(b=>b.classList.remove('selected'));
+}
+
+function deadlineLabel(dl) {
+  if (!dl || dl === 'none') return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const tomorrow = new Date(today); tomorrow.setDate(today.getDate()+1);
+  if (dl === 'today') return { text:'今日', overdue: false };
+  if (dl === 'tomorrow') return { text:'明日', overdue: false };
+  const d = new Date(dl);
+  const diff = Math.floor((d - today) / 86400000);
+  if (diff < 0) return { text:'期限切れ', overdue: true };
+  if (diff === 0) return { text:'今日', overdue: false };
+  if (diff === 1) return { text:'明日', overdue: false };
+  return { text:`${d.getMonth()+1}/${d.getDate()}`, overdue: false };
+}
+
+function renderTodos() {
+  const el = document.getElementById('todo-list');
+  if (!S.todos.length) { el.innerHTML = '<div class="empty-state">タスクなし</div>'; return; }
+  el.innerHTML = S.todos.map((t,i) => {
+    const dl = deadlineLabel(t.deadline);
+    return `<div class="todo-item ${t.done?'done':''}">
+      <div class="todo-check ${t.done?'checked':''}" onclick="toggleTodo(${i})">${t.done?'✓':''}</div>
+      <div class="todo-text">${t.text}</div>
+      ${dl ? `<div class="todo-deadline ${dl.overdue?'overdue':''}">${dl.text}</div>` : ''}
+      <button class="todo-del" onclick="deleteTodo(${i})">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function addTodo() {
+  const text = document.getElementById('todo-input').value.trim();
+  if (!text) return;
+  save('todos', [...S.todos, { text, done: false, deadline: selectedDL }]);
+  document.getElementById('todo-input').value = '';
+  renderTodos();
+}
+
+function toggleTodo(i) {
+  const list = [...S.todos]; list[i].done = !list[i].done;
+  save('todos', list); renderTodos();
+}
+function deleteTodo(i) {
+  const list = [...S.todos]; list.splice(i,1);
+  save('todos', list); renderTodos();
+}
+
+// ═══════════════════════════════════════════════
+//  API KEY
+// ═══════════════════════════════════════════════
+function saveApiKey() {
+  const v = document.getElementById('api-key-input').value.trim();
+  if (!v) return;
+  save('apiKey', v);
+  loadWeather();
+}
+
+// ═══════════════════════════════════════════════
+//  SETTINGS MODAL
+// ═══════════════════════════════════════════════
+function openSettingsModal() {
+  document.getElementById('settings-modal').classList.add('open');
+  document.getElementById('settings-api-key').value = S.apiKey;
+}
+function closeSettingsModal() { document.getElementById('settings-modal').classList.remove('open'); }
+function saveSettingsApiKey() {
+  const v = document.getElementById('settings-api-key').value.trim();
+  if (!v) return;
+  save('apiKey', v);
+  loadWeather();
+  closeSettingsModal();
+}
+function resetDay() {
+  if (!confirm('今日の予定とTodoをリセットしますか？')) return;
+  save('schedules', []);
+  save('todos', []);
+  renderSchedules(); renderTodos();
+  closeSettingsModal();
+}
+
+// ─── close modals on backdrop tap ───
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+});
+
+// ─── Enter key shortcuts ───
+document.getElementById('sch-title').addEventListener('keydown', e => { if (e.key==='Enter') addSchedule(); });
+document.getElementById('todo-input').addEventListener('keydown', e => { if (e.key==='Enter') addTodo(); });
+
+// ═══════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════
+setBackground(null);
+renderTrains();
+renderSchedules();
+renderTodos();
+loadWeather();
+
+// refresh weather every 10 min
+setInterval(loadWeather, 600_000);
+</script>
+</body>
+</html>
