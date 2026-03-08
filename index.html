@@ -153,6 +153,16 @@
     .wp-temp { font-size: 26px; font-weight: 600; font-family: 'DM Mono', monospace; }
     .wp-rain { font-size: 11px; color: var(--accent2); margin-top: 2px; }
     .wp-desc { font-size: 10px; color: var(--text-secondary); margin-top: 2px; }
+    .wp-diff {
+      display: inline-flex; align-items: center; gap: 3px;
+      font-size: 11px; font-weight: 600;
+      margin-top: 4px; padding: 2px 8px;
+      border-radius: 20px;
+      font-family: 'DM Mono', monospace;
+    }
+    .wp-diff.up   { background: rgba(255,120,120,0.18); color: #FF9090; border: 1px solid rgba(255,120,120,0.3); }
+    .wp-diff.down { background: rgba(100,200,255,0.18); color: #7ECFFF; border: 1px solid rgba(100,200,255,0.3); }
+    .wp-diff.same { background: rgba(255,255,255,0.10); color: var(--text-muted); border: 1px solid rgba(255,255,255,0.15); }
     .weather-arrow {
       display: flex; align-items: center; justify-content: center;
       color: var(--text-muted); font-size: 20px; flex-shrink: 0;
@@ -532,22 +542,180 @@
     ::-webkit-scrollbar { width: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 2px; }
+
+    /* ─── DRAG HANDLE ─── */
+    .drag-handle {
+      position: absolute;
+      top: 50%; right: 14px;
+      transform: translateY(-50%);
+      display: flex; flex-direction: column; gap: 4px;
+      padding: 6px 4px;
+      cursor: grab;
+      opacity: 0;
+      transition: opacity 0.2s;
+      touch-action: none;
+      z-index: 10;
+    }
+    .drag-handle span {
+      display: block; width: 20px; height: 2px;
+      background: rgba(255,255,255,0.5);
+      border-radius: 1px;
+    }
+    .sort-mode .card .drag-handle { opacity: 1; }
+    .sort-mode .card {
+      cursor: grab;
+      transition: transform 0.18s, box-shadow 0.18s, opacity 0.18s;
+      position: relative;
+    }
+    .sort-mode .card:active { cursor: grabbing; }
+    .card.dragging {
+      opacity: 0.55;
+      transform: scale(1.03);
+      box-shadow: 0 16px 48px rgba(0,0,0,0.4);
+      z-index: 999;
+      cursor: grabbing !important;
+    }
+    .card.drag-over {
+      border-color: rgba(126,207,255,0.6) !important;
+      box-shadow: 0 0 0 2px rgba(126,207,255,0.3), var(--glass-shadow) !important;
+    }
+
+    /* sort toggle btn */
+    #sort-toggle-btn {
+      position: fixed; bottom: 24px; right: 18px; z-index: 50;
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 50%;
+      width: 52px; height: 52px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 22px;
+      backdrop-filter: blur(12px);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+      transition: background 0.2s, transform 0.2s;
+      touch-action: manipulation;
+    }
+    #sort-toggle-btn.active {
+      background: rgba(126,207,255,0.3);
+      border-color: rgba(126,207,255,0.5);
+      transform: rotate(15deg);
+    }
+    .sort-mode-banner {
+      display: none;
+      text-align: center;
+      font-size: 12px;
+      color: var(--accent2);
+      letter-spacing: 0.08em;
+      margin-bottom: 10px;
+      animation: fadeUp 0.3s ease;
+    }
+    .sort-mode .sort-mode-banner { display: block; }
+
+    /* ─── HEADER ─── */
+    #site-header {
+      position: sticky; top: 0; z-index: 40;
+      max-width: 480px; margin: 0 auto;
+      display: flex; align-items: center;
+      padding: 10px 16px 10px;
+      background: rgba(10, 22, 40, 0.55);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border-bottom: 1px solid rgba(255,255,255,0.10);
+    }
+    #site-title {
+      flex: 1;
+      font-family: 'DM Mono', monospace;
+      font-size: 17px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      color: #fff;
+      display: flex; align-items: center; gap: 7px;
+    }
+    #site-title .title-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 8px rgba(255,213,128,0.7);
+      animation: pulse-dot 2.4s ease-in-out infinite;
+    }
+    @keyframes pulse-dot {
+      0%,100% { opacity: 1; transform: scale(1); }
+      50%      { opacity: 0.5; transform: scale(0.7); }
+    }
+    .header-btn {
+      background: rgba(255,255,255,0.10);
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 20px;
+      padding: 6px 14px;
+      color: var(--text-secondary);
+      font-size: 12px;
+      font-family: inherit;
+      cursor: pointer;
+      margin-left: 8px;
+      transition: background 0.15s, color 0.15s;
+      white-space: nowrap;
+      touch-action: manipulation;
+    }
+    .header-btn:active { background: rgba(255,255,255,0.22); color: #fff; }
+    .header-btn.settings-btn-header { color: var(--accent2); border-color: rgba(126,207,255,0.3); }
+    .header-btn.settings-btn-header:active { background: rgba(126,207,255,0.2); }
+
+    /* ─── FOOTER ─── */
+    #site-footer {
+      text-align: center;
+      padding: 18px 0 8px;
+      font-size: 10px;
+      color: rgba(255,255,255,0.28);
+      letter-spacing: 0.08em;
+      font-family: 'DM Mono', monospace;
+    }
+
+    /* ─── HELP CONFIRM MODAL ─── */
+    #help-confirm-modal .modal-sheet { padding-bottom: 32px; }
+    .help-confirm-body {
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 14px;
+      padding: 14px 16px;
+      margin-bottom: 14px;
+      font-size: 13px;
+      color: var(--text-secondary);
+      line-height: 1.7;
+    }
+    .help-confirm-body strong { color: #fff; }
+
+    /* adjust app padding for header */
+    #app { padding-top: 12px; }
+
+    /* hide old floating settings btn */
+    #settings-btn { display: none !important; }
   </style>
 </head>
 <body>
+
+<header id="site-header">
+  <div id="site-title">
+    <span class="title-dot"></span>朝ダッシュ
+  </div>
+  <button class="header-btn" onclick="openHelpConfirm()">ヘルプ</button>
+  <button class="header-btn settings-btn-header" onclick="openSettingsModal()">設定</button>
+</header>
 
 <div id="bg" class="bg-default"></div>
 
 <div id="app">
 
+  <div class="sort-mode-banner">↕ ドラッグしてカードを並べ替え　／　右下の ✕ で完了</div>
+
   <!-- 1. TIME -->
-  <div class="card" id="time-card">
+  <div class="card" id="time-card" data-card-id="time-card">
+    <div class="drag-handle"><span></span><span></span><span></span></div>
     <div id="clock">7:00</div>
     <div id="date-str">2026 / 1 / 1（木）</div>
   </div>
 
   <!-- 2. WEATHER -->
-  <div class="card" id="weather-card">
+  <div class="card" id="weather-card" data-card-id="weather-card">
+    <div class="drag-handle"><span></span><span></span><span></span></div>
     <div class="section-header">
       <div class="section-title"><span class="section-icon">🌤</span>天気</div>
     </div>
@@ -560,6 +728,7 @@
         <div class="wp-temp" id="cur-temp">──℃</div>
         <div class="wp-rain" id="cur-rain">降水 ─%</div>
         <div class="wp-desc" id="cur-desc"></div>
+        <div class="wp-diff same" id="cur-diff" style="display:none"></div>
       </div>
       <div class="weather-arrow">›</div>
       <div class="weather-panel dest" id="dest-weather" onclick="openDestModal()">
@@ -571,6 +740,7 @@
         <div class="wp-temp" id="dest-temp">──℃</div>
         <div class="wp-rain" id="dest-rain">降水 ─%</div>
         <div class="wp-desc" id="dest-desc"></div>
+        <div class="wp-diff same" id="dest-diff" style="display:none"></div>
       </div>
     </div>
     <div id="api-key-area" class="api-key-notice" style="display:none;">
@@ -581,7 +751,8 @@
   </div>
 
   <!-- 3. COUNTDOWN -->
-  <div class="card" id="countdown-card">
+  <div class="card" id="countdown-card" data-card-id="countdown-card">
+    <div class="drag-handle"><span></span><span></span><span></span></div>
     <div class="section-title" style="margin-bottom:8px;">
       <span class="section-icon">⏱</span>出発まで
     </div>
@@ -591,7 +762,8 @@
   </div>
 
   <!-- 4. TRAIN -->
-  <div class="card" id="train-card">
+  <div class="card" id="train-card" data-card-id="train-card">
+    <div class="drag-handle"><span></span><span></span><span></span></div>
     <div class="section-header">
       <div class="section-title"><span class="section-icon">🚃</span>電車</div>
     </div>
@@ -600,7 +772,8 @@
   </div>
 
   <!-- 5. SCHEDULE -->
-  <div class="card" id="schedule-card">
+  <div class="card" id="schedule-card" data-card-id="schedule-card">
+    <div class="drag-handle"><span></span><span></span><span></span></div>
     <div class="section-header">
       <div class="section-title"><span class="section-icon">📅</span>今日の予定</div>
     </div>
@@ -613,7 +786,8 @@
   </div>
 
   <!-- 6. TODO -->
-  <div class="card" id="todo-card">
+  <div class="card" id="todo-card" data-card-id="todo-card">
+    <div class="drag-handle"><span></span><span></span><span></span></div>
     <div class="section-header">
       <div class="section-title"><span class="section-icon">☑️</span>持ち物・TODO</div>
     </div>
@@ -632,10 +806,17 @@
     </div>
   </div>
 
+
+  <!-- FOOTER -->
+  <div id="site-footer">© okuken</div>
+
 </div>
 
 <!-- SETTINGS BTN -->
 <div id="settings-btn" onclick="openSettingsModal()">⚙️</div>
+
+<!-- SORT TOGGLE BTN -->
+<div id="sort-toggle-btn" onclick="toggleSortMode()" title="カードを並べ替え">↕</div>
 
 <!-- MODAL: 目的地設定 -->
 <div class="modal-overlay" id="dest-modal">
@@ -676,6 +857,21 @@
   </div>
 </div>
 
+<!-- MODAL: ヘルプ確認 -->
+<div class="modal-overlay" id="help-confirm-modal">
+  <div class="modal-sheet">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📖 ヘルプ</div>
+    <div class="help-confirm-body">
+      <strong>外部サイトに移動します</strong><br>
+      ヘルプページ（使い方ガイド）は外部サイトで公開されています。<br><br>
+      タップすると新しいタブで開きます。
+    </div>
+    <button class="modal-btn-primary" onclick="goToHelp()">外部サイトで開く →</button>
+    <button class="modal-btn-primary" style="background:transparent;margin-top:8px;color:var(--text-muted);" onclick="closeHelpConfirm()">キャンセル</button>
+  </div>
+</div>
+
 <!-- MODAL: 設定 -->
 <div class="modal-overlay" id="settings-modal">
   <div class="modal-sheet">
@@ -694,6 +890,8 @@
 // ═══════════════════════════════════════════════
 //  STATE & STORAGE
 // ═══════════════════════════════════════════════
+const DEFAULT_ORDER = ['time-card','weather-card','countdown-card','train-card','schedule-card','todo-card'];
+
 const S = {
   apiKey: localStorage.getItem('owm_api_key') || '',
   destCity: JSON.parse(localStorage.getItem('dest_city') || 'null'),
@@ -701,6 +899,7 @@ const S = {
   trains: JSON.parse(localStorage.getItem('trains') || '[]'),
   todos: JSON.parse(localStorage.getItem('todos') || '[]'),
   schedules: JSON.parse(localStorage.getItem('schedules') || '[]'),
+  cardOrder: JSON.parse(localStorage.getItem('card_order') || 'null') || ['time-card','weather-card','countdown-card','train-card','schedule-card','todo-card'],
 };
 
 function save(key, val) {
@@ -710,6 +909,7 @@ function save(key, val) {
   else if (key === 'trains') { S.trains = val; localStorage.setItem('trains', JSON.stringify(val)); }
   else if (key === 'todos') { S.todos = val; localStorage.setItem('todos', JSON.stringify(val)); }
   else if (key === 'schedules') { S.schedules = val; localStorage.setItem('schedules', JSON.stringify(val)); }
+  else if (key === 'cardOrder') { S.cardOrder = val; localStorage.setItem('card_order', JSON.stringify(val)); }
 }
 
 // ═══════════════════════════════════════════════
@@ -792,6 +992,44 @@ async function fetchWeatherByCity(cityName) {
   } catch { return null; }
 }
 
+// ─── Yesterday temp cache ───
+function todayKey() {
+  const d = new Date();
+  return `weather_temp_${d.getFullYear()}_${d.getMonth()+1}_${d.getDate()}`;
+}
+function yesterdayKey() {
+  const d = new Date(); d.setDate(d.getDate() - 1);
+  return `weather_temp_${d.getFullYear()}_${d.getMonth()+1}_${d.getDate()}`;
+}
+function saveTodayTemp(prefix, temp) {
+  const key = todayKey() + '_' + prefix;
+  localStorage.setItem(key, String(temp));
+}
+function getYesterdayTemp(prefix) {
+  const key = yesterdayKey() + '_' + prefix;
+  const v = localStorage.getItem(key);
+  return v !== null ? Number(v) : null;
+}
+
+function renderDiff(prefix, temp) {
+  const el = document.getElementById(`${prefix}-diff`);
+  if (!el) return;
+  const prev = getYesterdayTemp(prefix);
+  if (prev === null) { el.style.display = 'none'; return; }
+  const diff = temp - prev;
+  el.style.display = 'inline-flex';
+  if (diff > 0) {
+    el.className = 'wp-diff up';
+    el.textContent = `▲ +${diff}℃ 前日比`;
+  } else if (diff < 0) {
+    el.className = 'wp-diff down';
+    el.textContent = `▼ ${diff}℃ 前日比`;
+  } else {
+    el.className = 'wp-diff same';
+    el.textContent = `± 0℃ 前日比`;
+  }
+}
+
 function renderWeatherPanel(prefix, data, timeLabel) {
   if (!data) return;
   document.getElementById(`${prefix}-city`).textContent = data.city;
@@ -800,6 +1038,8 @@ function renderWeatherPanel(prefix, data, timeLabel) {
   document.getElementById(`${prefix}-temp`).textContent = `${data.temp}℃`;
   document.getElementById(`${prefix}-rain`).textContent = `降水 ${data.rain}%`;
   document.getElementById(`${prefix}-desc`).textContent = data.desc;
+  renderDiff(prefix, data.temp);
+  saveTodayTemp(prefix, data.temp);
   if (prefix === 'cur') setBackground(data.code);
 }
 
@@ -1037,9 +1277,17 @@ function deadlineLabel(dl) {
 function renderTodos() {
   const el = document.getElementById('todo-list');
   if (!S.todos.length) { el.innerHTML = '<div class="empty-state">タスクなし</div>'; return; }
-  el.innerHTML = S.todos.map((t,i) => {
+  // 未完了を上、完了済みを下にソート（元の順序を維持しつつ）
+  const sorted = S.todos
+    .map((t, origIndex) => ({ ...t, origIndex }))
+    .sort((a, b) => {
+      if (a.done === b.done) return a.origIndex - b.origIndex;
+      return a.done ? 1 : -1;
+    });
+  el.innerHTML = sorted.map((t) => {
+    const i = t.origIndex;
     const dl = deadlineLabel(t.deadline);
-    return `<div class="todo-item ${t.done?'done':''}">
+    return `<div class="todo-item ${t.done?'done':''}" data-idx="${i}">
       <div class="todo-check ${t.done?'checked':''}" onclick="toggleTodo(${i})">${t.done?'✓':''}</div>
       <div class="todo-text">${t.text}</div>
       ${dl ? `<div class="todo-deadline ${dl.overdue?'overdue':''}">${dl.text}</div>` : ''}
@@ -1057,8 +1305,20 @@ function addTodo() {
 }
 
 function toggleTodo(i) {
-  const list = [...S.todos]; list[i].done = !list[i].done;
-  save('todos', list); renderTodos();
+  // チェックされた要素をフェードアウトしてから並び替え
+  const el = document.querySelector(`.todo-item[data-idx="${i}"]`);
+  if (el) {
+    el.style.transition = 'opacity 0.25s, transform 0.25s';
+    el.style.opacity = '0';
+    el.style.transform = 'translateX(6px)';
+    setTimeout(() => {
+      const list = [...S.todos]; list[i].done = !list[i].done;
+      save('todos', list); renderTodos();
+    }, 220);
+  } else {
+    const list = [...S.todos]; list[i].done = !list[i].done;
+    save('todos', list); renderTodos();
+  }
 }
 function deleteTodo(i) {
   const list = [...S.todos]; list.splice(i,1);
@@ -1098,6 +1358,23 @@ function resetDay() {
   closeSettingsModal();
 }
 
+// ═══════════════════════════════════════════════
+//  HELP
+// ═══════════════════════════════════════════════
+// ▼ ヘルプページのURLをここに設定してください ▼
+const HELP_URL = 'https://example.com/asadash-help';
+
+function openHelpConfirm() {
+  document.getElementById('help-confirm-modal').classList.add('open');
+}
+function closeHelpConfirm() {
+  document.getElementById('help-confirm-modal').classList.remove('open');
+}
+function goToHelp() {
+  closeHelpConfirm();
+  window.open(HELP_URL, '_blank', 'noopener,noreferrer');
+}
+
 // ─── close modals on backdrop tap ───
 document.querySelectorAll('.modal-overlay').forEach(m => {
   m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
@@ -1107,9 +1384,164 @@ document.querySelectorAll('.modal-overlay').forEach(m => {
 document.getElementById('sch-title').addEventListener('keydown', e => { if (e.key==='Enter') addSchedule(); });
 document.getElementById('todo-input').addEventListener('keydown', e => { if (e.key==='Enter') addTodo(); });
 
+
+// ═══════════════════════════════════════════════
+//  CARD SORT (Drag & Touch)
+// ═══════════════════════════════════════════════
+let sortModeActive = false;
+
+function applyCardOrder() {
+  const app = document.getElementById('app');
+  const banner = app.querySelector('.sort-mode-banner');
+  S.cardOrder.forEach(id => {
+    const card = document.getElementById(id);
+    if (card) app.appendChild(card);
+  });
+  // keep banner on top
+  if (banner) app.insertBefore(banner, app.firstChild);
+}
+
+function toggleSortMode() {
+  sortModeActive = !sortModeActive;
+  const app = document.getElementById('app');
+  const btn = document.getElementById('sort-toggle-btn');
+  if (sortModeActive) {
+    app.classList.add('sort-mode');
+    btn.textContent = '✕';
+    btn.classList.add('active');
+    btn.title = '並べ替えを終了';
+  } else {
+    app.classList.remove('sort-mode');
+    btn.textContent = '↕';
+    btn.classList.remove('active');
+    btn.title = 'カードを並べ替え';
+    // save current order
+    const cards = app.querySelectorAll('.card[data-card-id]');
+    const order = [...cards].map(c => c.dataset.cardId);
+    save('cardOrder', order);
+  }
+}
+
+// ── Drag & Drop (mouse) ──
+let dragSrc = null;
+
+function initDrag(card) {
+  card.setAttribute('draggable', 'true');
+
+  card.addEventListener('dragstart', e => {
+    if (!sortModeActive) { e.preventDefault(); return; }
+    dragSrc = card;
+    setTimeout(() => card.classList.add('dragging'), 0);
+    e.dataTransfer.effectAllowed = 'move';
+  });
+  card.addEventListener('dragend', () => {
+    card.classList.remove('dragging');
+    document.querySelectorAll('.card.drag-over').forEach(c => c.classList.remove('drag-over'));
+    dragSrc = null;
+  });
+  card.addEventListener('dragover', e => {
+    if (!sortModeActive || !dragSrc || dragSrc === card) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    document.querySelectorAll('.card.drag-over').forEach(c => c.classList.remove('drag-over'));
+    card.classList.add('drag-over');
+  });
+  card.addEventListener('dragleave', () => card.classList.remove('drag-over'));
+  card.addEventListener('drop', e => {
+    if (!sortModeActive || !dragSrc || dragSrc === card) return;
+    e.preventDefault();
+    card.classList.remove('drag-over');
+    const app = document.getElementById('app');
+    const cards = [...app.querySelectorAll('.card[data-card-id]')];
+    const srcIdx = cards.indexOf(dragSrc);
+    const dstIdx = cards.indexOf(card);
+    if (srcIdx < dstIdx) card.after(dragSrc);
+    else card.before(dragSrc);
+  });
+}
+
+// ── Touch drag ──
+let touchCard = null, touchClone = null, touchOffX = 0, touchOffY = 0;
+
+function initTouch(card) {
+  const handle = card.querySelector('.drag-handle');
+  if (!handle) return;
+
+  handle.addEventListener('touchstart', e => {
+    if (!sortModeActive) return;
+    e.preventDefault();
+    touchCard = card;
+    const t = e.touches[0];
+    const rect = card.getBoundingClientRect();
+    touchOffX = t.clientX - rect.left;
+    touchOffY = t.clientY - rect.top;
+
+    // Create floating clone
+    touchClone = card.cloneNode(true);
+    touchClone.style.cssText = `
+      position:fixed; z-index:9999; pointer-events:none;
+      width:${rect.width}px; opacity:0.8;
+      border-radius:20px; backdrop-filter:blur(16px);
+      background:rgba(255,255,255,0.22);
+      border:1px solid rgba(126,207,255,0.5);
+      box-shadow:0 16px 48px rgba(0,0,0,0.4);
+      transform:scale(1.04);
+      transition:none;
+      left:${rect.left}px; top:${rect.top}px;
+    `;
+    document.body.appendChild(touchClone);
+    card.style.opacity = '0.35';
+  }, { passive: false });
+
+  handle.addEventListener('touchmove', e => {
+    if (!touchCard || !touchClone) return;
+    e.preventDefault();
+    const t = e.touches[0];
+    const x = t.clientX - touchOffX;
+    const y = t.clientY - touchOffY;
+    touchClone.style.left = x + 'px';
+    touchClone.style.top  = y + 'px';
+
+    // Find card under touch point
+    touchClone.style.display = 'none';
+    const el = document.elementFromPoint(t.clientX, t.clientY);
+    touchClone.style.display = '';
+    const targetCard = el && el.closest('.card[data-card-id]');
+    document.querySelectorAll('.card.drag-over').forEach(c => c.classList.remove('drag-over'));
+    if (targetCard && targetCard !== touchCard) targetCard.classList.add('drag-over');
+  }, { passive: false });
+
+  handle.addEventListener('touchend', e => {
+    if (!touchCard) return;
+    const t = e.changedTouches[0];
+    touchClone && touchClone.remove();
+    touchClone = null;
+    touchCard.style.opacity = '';
+
+    const el = document.elementFromPoint(t.clientX, t.clientY);
+    const targetCard = el && el.closest('.card[data-card-id]');
+    document.querySelectorAll('.card.drag-over').forEach(c => c.classList.remove('drag-over'));
+
+    if (targetCard && targetCard !== touchCard) {
+      const app = document.getElementById('app');
+      const cards = [...app.querySelectorAll('.card[data-card-id]')];
+      const srcIdx = cards.indexOf(touchCard);
+      const dstIdx = cards.indexOf(targetCard);
+      if (srcIdx < dstIdx) targetCard.after(touchCard);
+      else targetCard.before(touchCard);
+    }
+    touchCard = null;
+  });
+}
+
 // ═══════════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════════
+applyCardOrder();
+document.querySelectorAll('.card[data-card-id]').forEach(c => {
+  initDrag(c);
+  initTouch(c);
+});
 setBackground(null);
 renderTrains();
 renderSchedules();
