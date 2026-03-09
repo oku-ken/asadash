@@ -719,8 +719,12 @@
   <!-- 1. TIME -->
   <div class="card" id="time-card" data-card-id="time-card">
     <div class="drag-handle"><span></span><span></span><span></span></div>
-    <div id="clock">7:00</div>
-    <div id="date-str">2026 / 1 / 1（木）</div>
+    <div id="clock">──:──</div>
+    <div id="date-str">取得中...</div>
+    <div id="time-sync-status" style="
+      font-size:10px; margin-top:6px; letter-spacing:0.07em;
+      font-family:'DM Mono',monospace; color:var(--text-muted);
+    ">🔄 時刻同期中...</div>
   </div>
 
   <!-- 2. WEATHER -->
@@ -932,11 +936,83 @@ function save(key, val) {
 }
 
 // ═══════════════════════════════════════════════
-//  CLOCK
+//  CLOCK — WorldTimeAPI 同期
+//  取得したサーバー時刻 + performance.now() でドリフトなし計時
 // ═══════════════════════════════════════════════
 const DAY_JA = ['日','月','火','水','木','金','土'];
+
+// 時刻同期状態
+const Clock = {
+  synced: false,          // 同期済みか
+  baseEpoch: 0,           // サーバー時刻 (ms, Unix epoch)
+  basePerfNow: 0,         // 上記取得時の performance.now()
+  retryCount: 0,
+  maxRetry: 3,
+};
+
+// 現在の「正確な」Dateオブジェクトを返す
+function accurateNow() {
+  if (!Clock.synced) return new Date(); // フォールバック: 端末時計
+  const elapsed = performance.now() - Clock.basePerfNow;
+  return new Date(Clock.baseEpoch + elapsed);
+}
+
+// WorldTimeAPI から日本時刻を取得
+// 複数エンドポイントを順番に試す
+const TIME_APIS = [
+  'https://worldtimeapi.org/api/timezone/Asia/Tokyo',
+  'https://timeapi.io/api/time/current/zone?timeZone=Asia%2FTokyo',
+];
+
+async function syncTime() {
+  const statusEl = document.getElementById('time-sync-status');
+  for (let i = 0; i < TIME_APIS.length; i++) {
+    try {
+      const t0 = performance.now();
+      const res = await fetch(TIME_APIS[i], { cache: 'no-store' });
+      const t1 = performance.now();
+      const data = await res.json();
+
+      // レスポンスのパース（API毎に形式が異なる）
+      let epoch;
+      if (data.unixtime) {
+        // worldtimeapi: unixtime は秒単位
+        epoch = data.unixtime * 1000;
+      } else if (data.dateTime) {
+        // timeapi.io: "2026-03-09T07:30:00.123456" 形式
+        epoch = new Date(data.dateTime + '+09:00').getTime();
+      } else {
+        continue;
+      }
+
+      // 通信ラグの半分を補正（リクエスト往復の中間点を「取得時刻」とみなす）
+      const latency = (t1 - t0) / 2;
+      Clock.baseEpoch = epoch + latency;
+      Clock.basePerfNow = t1;
+      Clock.synced = true;
+      Clock.retryCount = 0;
+
+      if (statusEl) statusEl.textContent = '✓ 時刻同期済み';
+      setTimeout(() => { if (statusEl) statusEl.style.display = 'none'; }, 3000);
+      return;
+    } catch (e) {
+      // このAPIは失敗 → 次を試す
+    }
+  }
+
+  // 全API失敗
+  Clock.retryCount++;
+  if (statusEl) statusEl.textContent = '⚠ 時刻未同期（端末時計を使用中）';
+  if (Clock.retryCount < Clock.maxRetry) {
+    setTimeout(syncTime, 10000); // 10秒後にリトライ
+  }
+}
+
+// 30分ごとに再同期（長時間使用時のドリフト対策）
+setInterval(syncTime, 30 * 60 * 1000);
+
 function updateClock() {
-  const now = new Date();
+  const now = accurateNow();
   const h = String(now.getHours()).padStart(2,'0');
   const m = String(now.getMinutes()).padStart(2,'0');
   document.getElementById('clock').textContent = `${h}:${m}`;
@@ -947,7 +1023,9 @@ function updateClock() {
   renderTrains();
 }
 setInterval(updateClock, 1000);
+// 時刻同期してからクロックを起動（同期完了を待たず即座に表示も開始）
 updateClock();
+syncTime();
 
 // ═══════════════════════════════════════════════
 //  BACKGROUND / WEATHER CODE → BG
@@ -955,7 +1033,7 @@ updateClock();
 function setBackground(code) {
   const bg = document.getElementById('bg');
   bg.className = '';
-  const h = new Date().getHours();
+  const h = accurateNow().getHours();
   if (h < 6 || h >= 20) { bg.classList.add('bg-night'); return; }
   if (!code) { bg.classList.add('bg-default'); return; }
   if (code >= 200 && code < 600) bg.classList.add('bg-rain');
@@ -1172,7 +1250,7 @@ function renderWeatherPanel(prefix, data, timeLabel, prevTemp) {
 }
 
 async function loadWeather() {
-  const now = new Date();
+  const now = accurateNow();
   const timeStr = `${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}現在`;
 
   // current location: GPS → 現在天気 + 昨日同時刻で前日比
@@ -1311,7 +1389,7 @@ function updateCountdown() {
   const el = document.getElementById('countdown-display');
   const labelEl = document.getElementById('depart-time-str');
   if (!S.departTime) { el.textContent = '──:──:──'; labelEl.textContent = '出発時間未設定'; return; }
-  const now = new Date();
+  const now = accurateNow();
   const [dh, dm] = S.departTime.split(':').map(Number);
   const dep = new Date(now); dep.setHours(dh, dm, 0, 0);
   let diff = Math.floor((dep - now) / 1000);
@@ -1359,7 +1437,7 @@ function clearAllTrains() {
 
 function renderTrains() {
   const el = document.getElementById('train-list');
-  const now = new Date();
+  const now = accurateNow();
   const nowSec = now.getHours()*3600 + now.getMinutes()*60 + now.getSeconds();
   if (!S.trains.length) { el.innerHTML = '<div class="empty-state">電車が未登録です</div>'; return; }
   el.innerHTML = S.trains.map((t,i) => {
