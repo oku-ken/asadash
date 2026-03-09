@@ -831,7 +831,11 @@
     <div class="modal-title">目的地を設定</div>
     <input class="modal-input" type="text" id="dest-search-input" placeholder="都市名を入力（例：大阪、Osaka）" oninput="searchCity(this.value)">
     <div class="search-results" id="search-results"></div>
-    <button class="modal-btn-primary" onclick="closeDestModal()">キャンセル</button>
+    <div style="margin-top:14px;">
+      <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;letter-spacing:0.05em;">到着予定時刻（この時刻の天気を表示）</div>
+      <input class="modal-input" type="time" id="dest-arrival-time" placeholder="--:--" style="margin-bottom:0;">
+    </div>
+    <button class="modal-btn-primary" style="margin-top:12px;" onclick="closeDestModal()">キャンセル</button>
   </div>
 </div>
 
@@ -980,34 +984,102 @@ function wmoBgCode(wmo) {
   return null;
 }
 
-async function fetchWeatherByCoords(lat, lon) {
+// ─── open-meteo: 現在地の現在天気（current） ───
+async function fetchWeatherCurrent(lat, lon) {
   try {
     const url = `https://api.open-meteo.com/v1/forecast`
       + `?latitude=${lat}&longitude=${lon}`
       + `&current=temperature_2m,weathercode,precipitation_probability`
-      + `&hourly=precipitation_probability`
-      + `&timezone=Asia%2FTokyo`
-      + `&forecast_days=1`;
+      + `&timezone=Asia%2FTokyo`;
     const data = await fetch(url).then(r => r.json());
     const cur = data.current;
     const wmo = cur.weathercode;
     const { icon, desc } = wmoIcon(wmo);
     return {
-      city: `${lat.toFixed(2)},${lon.toFixed(2)}`,  // 座標（都市名は別途逆ジオコード）
+      city: `${lat.toFixed(2)},${lon.toFixed(2)}`,
       temp: Math.round(cur.temperature_2m),
-      wmo,
-      icon,
-      desc,
+      wmo, icon, desc,
       rain: cur.precipitation_probability ?? 0,
       bgCode: wmoBgCode(wmo),
     };
   } catch { return null; }
 }
 
+// ─── open-meteo: 指定時刻（HH:MM）の天気を hourly から取得 ───
+async function fetchWeatherAtHour(lat, lon, targetHHMM) {
+  try {
+    // targetHHMM: "07:30" 形式 → 最近傍の整数時刻を使う
+    const [th, tm] = targetHHMM.split(':').map(Number);
+    const targetHour = th; // hourlyは毎正時
+
+    const url = `https://api.open-meteo.com/v1/forecast`
+      + `?latitude=${lat}&longitude=${lon}`
+      + `&hourly=temperature_2m,weathercode,precipitation_probability`
+      + `&timezone=Asia%2FTokyo`
+      + `&forecast_days=2`;
+    const data = await fetch(url).then(r => r.json());
+    const times = data.hourly.time; // "2026-03-09T07:00" 形式
+
+    // 今日の targetHour に最も近いインデックスを探す
+    const today = new Date();
+    const dateStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+    const targetTime = `${dateStr}T${String(targetHour).padStart(2,'0')}:00`;
+    let idx = times.indexOf(targetTime);
+    if (idx === -1) {
+      // 見つからなければ最近傍を探す
+      idx = times.findIndex(t => t >= targetTime);
+      if (idx === -1) idx = times.length - 1;
+    }
+
+    const wmo = data.hourly.weathercode[idx];
+    const { icon, desc } = wmoIcon(wmo);
+    return {
+      city: '',
+      temp: Math.round(data.hourly.temperature_2m[idx]),
+      wmo, icon, desc,
+      rain: Math.round((data.hourly.precipitation_probability[idx] ?? 0)),
+      bgCode: wmoBgCode(wmo),
+      hourLabel: `${String(targetHour).padStart(2,'0')}:00`,
+    };
+  } catch { return null; }
+}
+
+// ─── open-meteo: 昨日の同時刻（±1時間以内）の気温を取得 ───
+async function fetchYesterdayTempAtCurrentHour(lat, lon) {
+  try {
+    const now = new Date();
+    const nowHour = now.getHours();
+
+    const url = `https://api.open-meteo.com/v1/forecast`
+      + `?latitude=${lat}&longitude=${lon}`
+      + `&hourly=temperature_2m`
+      + `&timezone=Asia%2FTokyo`
+      + `&past_days=1`
+      + `&forecast_days=1`;
+    const data = await fetch(url).then(r => r.json());
+    const times = data.hourly.time;
+
+    // 昨日の日付文字列
+    const yest = new Date(now); yest.setDate(now.getDate() - 1);
+    const yestStr = `${yest.getFullYear()}-${String(yest.getMonth()+1).padStart(2,'0')}-${String(yest.getDate()).padStart(2,'0')}`;
+
+    // 昨日のnowHour（±1時間内）のインデックスを探す
+    let bestIdx = -1, bestDiff = Infinity;
+    times.forEach((t, i) => {
+      if (!t.startsWith(yestStr)) return;
+      const h = parseInt(t.split('T')[1].split(':')[0]);
+      const diff = Math.abs(h - nowHour);
+      if (diff <= 1 && diff < bestDiff) { bestDiff = diff; bestIdx = i; }
+    });
+    if (bestIdx === -1) return null;
+    return { temp: Math.round(data.hourly.temperature_2m[bestIdx]), hour: parseInt(times[bestIdx].split('T')[1]) };
+  } catch { return null; }
+}
+
 // open-meteo + nominatim で都市名逆ジオコード
 async function fetchWeatherByCoordsFull(lat, lon) {
   const [weather, geo] = await Promise.all([
-    fetchWeatherByCoords(lat, lon),
+    fetchWeatherCurrent(lat, lon),
     fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=ja`)
       .then(r => r.json()).catch(() => null)
   ]);
@@ -1017,6 +1089,11 @@ async function fetchWeatherByCoordsFull(lat, lon) {
     weather.city = a.city || a.town || a.village || a.county || a.state || geo.display_name.split(',')[0];
   }
   return weather;
+}
+
+// 後方互換（目的地の現在天気取得用）
+async function fetchWeatherByCoords(lat, lon) {
+  return fetchWeatherCurrent(lat, lon);
 }
 
 // 都市名 → 座標 (nominatim)
@@ -1029,31 +1106,32 @@ async function geocodeCity(cityName) {
   } catch { return []; }
 }
 
-// ─── Yesterday temp cache ───
-function todayKey() {
+// ─── 前日比: 昨日の同時刻APIから取得してキャッシュも持つ ───
+// キャッシュキー: weather_yday_{prefix}_{YYYY_M_D_H} → hourly版で上書き
+function todayHourKey(prefix) {
   const d = new Date();
-  return `weather_temp_${d.getFullYear()}_${d.getMonth()+1}_${d.getDate()}`;
-}
-function yesterdayKey() {
-  const d = new Date(); d.setDate(d.getDate() - 1);
-  return `weather_temp_${d.getFullYear()}_${d.getMonth()+1}_${d.getDate()}`;
+  return `wt_${prefix}_${d.getFullYear()}_${d.getMonth()+1}_${d.getDate()}_${d.getHours()}`;
 }
 function saveTodayTemp(prefix, temp) {
-  const key = todayKey() + '_' + prefix;
-  localStorage.setItem(key, String(temp));
+  localStorage.setItem(todayHourKey(prefix), String(temp));
 }
-function getYesterdayTemp(prefix) {
-  const key = yesterdayKey() + '_' + prefix;
+// 前日比: APIから直接取得し、フォールバックとしてlocalStorageも参照
+async function getYesterdayTempForDiff(lat, lon, prefix) {
+  // まずAPIで昨日の同時刻を取得
+  const result = await fetchYesterdayTempAtCurrentHour(lat, lon);
+  if (result) return result.temp;
+  // APIが失敗したらlocalStorageキャッシュから
+  const now = new Date(); const yest = new Date(now); yest.setDate(now.getDate()-1);
+  const key = `wt_${prefix}_${yest.getFullYear()}_${yest.getMonth()+1}_${yest.getDate()}_${now.getHours()}`;
   const v = localStorage.getItem(key);
   return v !== null ? Number(v) : null;
 }
 
-function renderDiff(prefix, temp) {
+function renderDiff(prefix, temp, prevTemp) {
   const el = document.getElementById(`${prefix}-diff`);
   if (!el) return;
-  const prev = getYesterdayTemp(prefix);
-  if (prev === null) { el.style.display = 'none'; return; }
-  const diff = temp - prev;
+  if (prevTemp === null || prevTemp === undefined) { el.style.display = 'none'; return; }
+  const diff = temp - prevTemp;
   el.style.display = 'inline-flex';
   if (diff > 0) {
     el.className = 'wp-diff up';
@@ -1067,7 +1145,7 @@ function renderDiff(prefix, temp) {
   }
 }
 
-function renderWeatherPanel(prefix, data, timeLabel) {
+function renderWeatherPanel(prefix, data, timeLabel, prevTemp) {
   if (!data) return;
   document.getElementById(`${prefix}-city`).textContent = data.city;
   document.getElementById(`${prefix}-wtime`).textContent = timeLabel;
@@ -1075,7 +1153,7 @@ function renderWeatherPanel(prefix, data, timeLabel) {
   document.getElementById(`${prefix}-temp`).textContent = `${data.temp}℃`;
   document.getElementById(`${prefix}-rain`).textContent = `降水 ${data.rain}%`;
   document.getElementById(`${prefix}-desc`).textContent = data.desc || '';
-  renderDiff(prefix, data.temp);
+  renderDiff(prefix, data.temp, prevTemp);
   saveTodayTemp(prefix, data.temp);
   if (prefix === 'cur') setBackground(data.bgCode ?? null);
 }
@@ -1084,11 +1162,15 @@ async function loadWeather() {
   const now = new Date();
   const timeStr = `${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}現在`;
 
-  // current location (GPS → open-meteo + nominatim)
+  // current location: GPS → 現在天気 + 昨日同時刻で前日比
   if (navigator.geolocation) {
     navigator.geolocation.getCurrentPosition(async pos => {
-      const d = await fetchWeatherByCoordsFull(pos.coords.latitude, pos.coords.longitude);
-      renderWeatherPanel('cur', d, timeStr);
+      const { latitude: lat, longitude: lon } = pos.coords;
+      const [d, prevTemp] = await Promise.all([
+        fetchWeatherByCoordsFull(lat, lon),
+        fetchYesterdayTempAtCurrentHour(lat, lon).then(r => r ? r.temp : null),
+      ]);
+      renderWeatherPanel('cur', d, timeStr, prevTemp);
     }, () => {
       document.getElementById('cur-city').textContent = '位置情報なし';
     });
@@ -1096,12 +1178,9 @@ async function loadWeather() {
     document.getElementById('cur-city').textContent = '非対応';
   }
 
-  // destination
+  // destination: 目的地に設定した到着時刻の天気
   if (S.destCity) {
-    const depH = S.departTime ? S.departTime.split(':')[0] : now.getHours();
-    const d = await fetchWeatherByCoords(S.destCity.lat, S.destCity.lon);
-    if (d) d.city = S.destCity.name;
-    renderWeatherPanel('dest', d, `${depH}:00予報`);
+    await refreshDestWeather();
   }
 }
 
@@ -1112,6 +1191,10 @@ function openDestModal() {
   document.getElementById('dest-modal').classList.add('open');
   document.getElementById('dest-search-input').value = '';
   document.getElementById('search-results').innerHTML = '';
+  // 既存の到着時刻があれば復元
+  const at = document.getElementById('dest-arrival-time');
+  at.value = S.destCity?.arrivalTime || '';
+  if (at.value) at.setAttribute('data-filled', ''); else at.removeAttribute('data-filled');
   setTimeout(() => document.getElementById('dest-search-input').focus(), 300);
 }
 function closeDestModal() { document.getElementById('dest-modal').classList.remove('open'); }
@@ -1141,13 +1224,28 @@ function selectDestCityEncoded(encoded) {
 }
 
 async function selectDestCity(city) {
+  // 到着時刻を入力欄から取得してcityオブジェクトに付与
+  const atInput = document.getElementById('dest-arrival-time');
+  if (atInput && atInput.value) city.arrivalTime = atInput.value;
+  else if (S.destCity?.arrivalTime) city.arrivalTime = S.destCity.arrivalTime; // 都市だけ変えた場合は引継ぎ
   save('destCity', city);
   document.getElementById('dest-city').textContent = city.name;
   closeDestModal();
-  const depH = S.departTime ? S.departTime.split(':')[0] : new Date().getHours();
-  const d = await fetchWeatherByCoords(city.lat, city.lon);
-  if (d) d.city = city.name;
-  renderWeatherPanel('dest', d, `${depH}:00予報`);
+  await refreshDestWeather();
+}
+
+async function refreshDestWeather() {
+  if (!S.destCity) return;
+  const now = new Date();
+  const targetTime = S.destCity.arrivalTime || `${String(now.getHours()).padStart(2,'0')}:00`;
+  const [th, tm] = targetTime.split(':').map(Number);
+  const timeLabel = `${String(th).padStart(2,'0')}:${String(tm).padStart(2,'0')} の予報`;
+  const [d, yest] = await Promise.all([
+    fetchWeatherAtHour(S.destCity.lat, S.destCity.lon, targetTime),
+    fetchYesterdayTempAtCurrentHour(S.destCity.lat, S.destCity.lon).then(r => r ? r.temp : null),
+  ]);
+  if (d) d.city = S.destCity.name;
+  renderWeatherPanel('dest', d, timeLabel, yest);
 }
 
 // ═══════════════════════════════════════════════
