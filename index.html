@@ -829,13 +829,26 @@
   <div class="modal-sheet">
     <div class="modal-handle"></div>
     <div class="modal-title">目的地を設定</div>
-    <input class="modal-input" type="text" id="dest-search-input" placeholder="都市名を入力（例：大阪、Osaka）" oninput="searchCity(this.value)">
-    <div class="search-results" id="search-results"></div>
-    <div style="margin-top:14px;">
+
+    <!-- STEP 1: 都市検索 -->
+    <div id="dest-step1">
+      <input class="modal-input" type="text" id="dest-search-input" placeholder="都市名を入力（例：大阪、Osaka）" oninput="searchCity(this.value)">
+      <div class="search-results" id="search-results"></div>
+    </div>
+
+    <!-- STEP 2: 時刻設定（都市選択後に表示） -->
+    <div id="dest-step2" style="display:none;">
+      <div id="dest-selected-city-label" style="background:rgba(126,207,255,0.15);border:1px solid rgba(126,207,255,0.35);border-radius:12px;padding:12px 14px;margin-bottom:14px;font-size:14px;color:#fff;display:flex;align-items:center;gap:8px;">
+        <span style="font-size:18px;">📍</span>
+        <span id="dest-selected-city-name"></span>
+        <button onclick="resetDestStep()" style="margin-left:auto;background:none;border:none;color:var(--text-muted);font-size:13px;cursor:pointer;">変更</button>
+      </div>
       <div style="font-size:12px;color:var(--text-muted);margin-bottom:6px;letter-spacing:0.05em;">到着予定時刻（この時刻の天気を表示）</div>
       <input class="modal-input" type="time" id="dest-arrival-time" placeholder="--:--" style="margin-bottom:0;">
+      <button class="modal-btn-primary" style="margin-top:12px;" onclick="saveDestCity()">この設定で保存</button>
     </div>
-    <button class="modal-btn-primary" style="margin-top:12px;" onclick="closeDestModal()">キャンセル</button>
+
+    <button class="modal-btn-primary" style="background:transparent;margin-top:8px;color:var(--text-muted);" onclick="closeDestModal()">キャンセル</button>
   </div>
 </div>
 
@@ -1187,17 +1200,62 @@ async function loadWeather() {
 // ═══════════════════════════════════════════════
 //  DESTINATION MODAL
 // ═══════════════════════════════════════════════
+// 仮選択中の都市（まだ保存していない）
+let pendingDestCity = null;
+
 function openDestModal() {
+  pendingDestCity = null;
   document.getElementById('dest-modal').classList.add('open');
+  // Step1を表示、Step2を隠す
+  document.getElementById('dest-step1').style.display = '';
+  document.getElementById('dest-step2').style.display = 'none';
   document.getElementById('dest-search-input').value = '';
   document.getElementById('search-results').innerHTML = '';
+  setTimeout(() => document.getElementById('dest-search-input').focus(), 300);
+}
+
+function closeDestModal() {
+  document.getElementById('dest-modal').classList.remove('open');
+  pendingDestCity = null;
+}
+
+// 都市選択 → Step2へ進む（まだ閉じない）
+function selectDestCityEncoded(encoded) {
+  const city = JSON.parse(decodeURIComponent(encoded));
+  pendingDestCity = city;
+
+  // Step2へ切り替え
+  document.getElementById('dest-step1').style.display = 'none';
+  document.getElementById('dest-step2').style.display = '';
+  document.getElementById('dest-selected-city-name').textContent = city.name;
+
   // 既存の到着時刻があれば復元
   const at = document.getElementById('dest-arrival-time');
   at.value = S.destCity?.arrivalTime || '';
   if (at.value) at.setAttribute('data-filled', ''); else at.removeAttribute('data-filled');
-  setTimeout(() => document.getElementById('dest-search-input').focus(), 300);
 }
-function closeDestModal() { document.getElementById('dest-modal').classList.remove('open'); }
+
+// 「変更」ボタン → Step1に戻る
+function resetDestStep() {
+  pendingDestCity = null;
+  document.getElementById('dest-step1').style.display = '';
+  document.getElementById('dest-step2').style.display = 'none';
+  document.getElementById('dest-search-input').value = '';
+  document.getElementById('search-results').innerHTML = '';
+  setTimeout(() => document.getElementById('dest-search-input').focus(), 100);
+}
+
+// 「保存」ボタン → 確定して閉じる
+async function saveDestCity() {
+  if (!pendingDestCity) return;
+  const city = pendingDestCity;
+  const atInput = document.getElementById('dest-arrival-time');
+  if (atInput && atInput.value) city.arrivalTime = atInput.value;
+  save('destCity', city);
+  document.getElementById('dest-city').textContent = city.name;
+  closeDestModal();
+  await refreshDestWeather();
+}
 
 let searchTimer;
 async function searchCity(q) {
@@ -1217,21 +1275,6 @@ async function searchCity(q) {
       }).join('');
     } catch { }
   }, 400);
-}
-
-function selectDestCityEncoded(encoded) {
-  selectDestCity(JSON.parse(decodeURIComponent(encoded)));
-}
-
-async function selectDestCity(city) {
-  // 到着時刻を入力欄から取得してcityオブジェクトに付与
-  const atInput = document.getElementById('dest-arrival-time');
-  if (atInput && atInput.value) city.arrivalTime = atInput.value;
-  else if (S.destCity?.arrivalTime) city.arrivalTime = S.destCity.arrivalTime; // 都市だけ変えた場合は引継ぎ
-  save('destCity', city);
-  document.getElementById('dest-city').textContent = city.name;
-  closeDestModal();
-  await refreshDestWeather();
 }
 
 async function refreshDestWeather() {
