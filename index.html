@@ -537,6 +537,16 @@
     input:focus, button:focus { outline: none; }
     input[type=time]::-webkit-calendar-picker-indicator { filter: invert(1); opacity: 0.5; }
     input[type=date]::-webkit-calendar-picker-indicator { filter: invert(1); opacity: 0.5; }
+    /* スマホで time 未入力時に --:-- を擬似的に見せる */
+    input[type=time]:not(:focus):not([data-filled])::before {
+      content: attr(placeholder);
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+    input[type=time]:not(:focus):not([data-filled]) { color: transparent; }
+    input[type=time][data-filled], input[type=time]:focus { color: #fff; }
+    input[type=date]:not([data-filled]) { color: var(--text-muted); }
+    input[type=date][data-filled] { color: #fff; }
 
     /* Scrollbar */
     ::-webkit-scrollbar { width: 4px; }
@@ -775,7 +785,7 @@
     </div>
     <div class="schedule-list" id="schedule-list"></div>
     <div class="schedule-add-row">
-      <input type="time" id="sch-time">
+      <input type="time" id="sch-time" placeholder="--:--">
       <input type="text" id="sch-title" placeholder="予定を追加...">
       <button onclick="addSchedule()">＋</button>
     </div>
@@ -796,7 +806,7 @@
         <button class="dl-btn selected" data-dl="today" onclick="selectDeadline(this)">今日</button>
         <button class="dl-btn" data-dl="tomorrow" onclick="selectDeadline(this)">明日</button>
         <button class="dl-btn" data-dl="none" onclick="selectDeadline(this)">期限なし</button>
-        <input type="date" id="todo-date-input" class="dl-date-input" onchange="selectDateDL(this)">
+        <input type="date" id="todo-date-input" class="dl-date-input" placeholder="日付指定" onchange="selectDateDL(this)">
       </div>
       <button class="todo-add-btn" onclick="addTodo()">＋ 追加</button>
     </div>
@@ -860,7 +870,7 @@
     <div class="modal-title">📖 ヘルプ</div>
     <div class="help-confirm-body">
       <strong>外部サイトに移動します</strong><br>
-      ヘルプページ（使い方ガイド）はnoteで公開。<br><br>
+      ヘルプページ（使い方ガイド）は外部サイトで公開されています。<br><br>
       タップすると新しいタブで開きます。
     </div>
     <button class="modal-btn-primary" onclick="goToHelp()">外部サイトで開く →</button>
@@ -1416,6 +1426,17 @@ document.querySelectorAll('.modal-overlay').forEach(m => {
 
 // ─── Enter key shortcuts ───
 document.getElementById('sch-title').addEventListener('keydown', e => { if (e.key==='Enter') addSchedule(); });
+
+// ─── time/date 入力の filled 状態管理（スマホ placeholder 対応） ───
+function syncFilled(el) {
+  if (el.value) el.setAttribute('data-filled', '');
+  else el.removeAttribute('data-filled');
+}
+document.querySelectorAll('input[type=time], input[type=date]').forEach(el => {
+  syncFilled(el);
+  el.addEventListener('change', () => syncFilled(el));
+  el.addEventListener('input',  () => syncFilled(el));
+});
 document.getElementById('todo-input').addEventListener('keydown', e => { if (e.key==='Enter') addTodo(); });
 
 
